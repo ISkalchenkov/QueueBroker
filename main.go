@@ -14,7 +14,7 @@ type queue chan string
 
 type QueueStorage struct {
 	Queues map[string]queue
-	sync.Mutex
+	sync.RWMutex
 }
 
 func NewStorage() *QueueStorage {
@@ -32,7 +32,9 @@ func writeMessage(res http.ResponseWriter, message string) {
 func (storage *QueueStorage) handleGet(res http.ResponseWriter, req *http.Request) {
 	queueName := req.URL.Path
 
+	storage.RLock()
 	queue, ok := storage.Queues[queueName]
+	storage.RUnlock()
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		return
@@ -89,7 +91,9 @@ func (storage *QueueStorage) handlePut(res http.ResponseWriter, req *http.Reques
 	storage.createQueue(queueName)
 
 	go func() {
+		storage.RLock()
 		queue := storage.Queues[queueName]
+		storage.RUnlock()
 		queue <- v
 	}()
 }
